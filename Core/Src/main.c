@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include "ring_buffer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,7 +38,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
-#define CDC_TX_BUFF_MAXLEN 255
+#define CDC_TX_BUFF_MAXLEN 32
+#define CDC_RX_BUFF_MAXLEN 255
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -47,7 +49,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
-char cdc_tx[255];
+char cdc_tx[CDC_TX_BUFF_MAXLEN];
+uint8_t cdc_rx[CDC_RX_BUFF_MAXLEN];
+RING_buffer_t cdc_rx_ring;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -97,7 +101,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
-
+  RING_Init(&cdc_rx_ring, cdc_rx, CDC_RX_BUFF_MAXLEN);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -107,13 +111,13 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    static uint8_t counter = 0;
+    static uint16_t counter = 100;
     HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
     sprintf(cdc_tx, "counter = %d\n\r", counter);
     CDC_Transmit_FS(cdc_tx, CDC_TX_BUFF_MAXLEN);
     printf("[CDC->] %s", cdc_tx);
-    if (counter > 100){
-      counter = 0;
+    if (counter > 1000){
+      counter = 100;
     }
     HAL_Delay(counter * 5);
     counter++;
