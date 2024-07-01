@@ -49,11 +49,10 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
+/* USER CODE BEGIN PV */
 char cdc_tx[CDC_TX_BUFF_MAXLEN];
 uint8_t cdc_rx[CDC_RX_BUFF_MAXLEN];
 RING_buffer_t cdc_rx_ring;
-/* USER CODE BEGIN PV */
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -235,6 +234,19 @@ HAL_GPIO_WritePin(GPIOF, LED1_Pin|LED2_Pin, GPIO_PIN_SET);
 }
 
 /* USER CODE BEGIN 4 */
+
+/**
+  * @brief USB CDC Rx interrupt handler
+  * @param Buf - buffer with received message
+  * @param Len - received message length
+  * @retval None
+  */
+void USB_CDC_RxHandler(uint8_t* Buf, uint32_t Len)
+{
+  printf("[CDC<-] 0x%X\n\r", *Buf);
+  CDC_Transmit_FS(Buf, Len);
+}
+
 PUTCHAR_PROTOTYPE
 {
   /* Place your implementation of fputc here */
@@ -243,6 +255,7 @@ PUTCHAR_PROTOTYPE
 
   return ch;
 }
+
 /* USER CODE END 4 */
 
 /**
