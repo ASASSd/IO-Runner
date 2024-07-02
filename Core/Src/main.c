@@ -38,8 +38,9 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 #define PUTCHAR_PROTOTYPE int __io_putchar(int ch)
-#define CDC_TX_BUFF_MAXLEN 32
-#define CDC_RX_BUFF_MAXLEN 255
+#define CDC_TX_SINGLE_BUFF_MAXLEN 128
+#define CDC_RX_TOTAL_BUFF_MAXLEN 1024
+#define CDC_RX_SINGLE_BUFF_MAXLEN (CDC_RX_TOTAL_BUFF_MAXLEN / 8)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -50,8 +51,9 @@
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
 /* USER CODE BEGIN PV */
-char cdc_tx[CDC_TX_BUFF_MAXLEN];
-uint8_t cdc_rx[CDC_RX_BUFF_MAXLEN];
+char cdc_tx[CDC_TX_SINGLE_BUFF_MAXLEN];
+uint8_t cdc_rx_total[CDC_RX_TOTAL_BUFF_MAXLEN];
+char cdc_rx[CDC_RX_SINGLE_BUFF_MAXLEN];
 RING_buffer_t cdc_rx_ring;
 /* USER CODE END PV */
 
@@ -100,7 +102,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
-  RING_Init(&cdc_rx_ring, cdc_rx, CDC_RX_BUFF_MAXLEN);
+  RING_Init(&cdc_rx_ring, cdc_rx_total, CDC_RX_TOTAL_BUFF_MAXLEN);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -113,7 +115,7 @@ int main(void)
     static uint16_t counter = 100;
     HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
     sprintf(cdc_tx, "counter = %d\n\r", counter);
-    CDC_Transmit_FS(cdc_tx, CDC_TX_BUFF_MAXLEN);
+    CDC_Transmit_FS(cdc_tx, CDC_TX_SINGLE_BUFF_MAXLEN);
     printf("[CDC->] %s", cdc_tx);
     if (counter > 1000){
       counter = 100;
@@ -244,7 +246,11 @@ HAL_GPIO_WritePin(GPIOF, LED1_Pin|LED2_Pin, GPIO_PIN_SET);
 void USB_CDC_RxHandler(uint8_t* Buf, uint32_t Len)
 {
   printf("[CDC<-] 0x%X\n\r", *Buf);
-  CDC_Transmit_FS(Buf, Len);
+  if (Len <= CDC_RX_SINGLE_BUFF_MAXLEN) {
+    if (*(Buf + (Len-1)) == '\0') {   // FIXME: need to properly catch zero-terminated string and put it into ring buffer
+      memcpy(cdc_rx, Buf, Len); 
+    }
+  }
 }
 
 PUTCHAR_PROTOTYPE
