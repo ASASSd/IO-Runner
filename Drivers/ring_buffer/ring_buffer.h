@@ -155,7 +155,7 @@ void RING_PopString(RING_buffer_t *ringbuf, char *string);
 /**
 @function RING_ShowSymbol − Показывает содержимое элемента без его удаления из буфера.
 @param RING_buffer_t *ringbuf − Указатель на кольцевой буфер.
-@param uint16_t symbolNumbe − Номер элемента.
+@param uint16_t symbolNumber − Номер элемента.
 @return int32_t Значение полученого элемента. -1 если ошибка.
  */
 int32_t RING_ShowSymbol(const RING_buffer_t *buf, uint16_t symbolNumber);

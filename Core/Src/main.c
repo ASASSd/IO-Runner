@@ -112,6 +112,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+  #if 0
     static uint16_t counter = 100;
     HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
     sprintf(cdc_tx, "counter = %d\n\r", counter);
@@ -122,6 +123,14 @@ int main(void)
     }
     HAL_Delay(counter * 5);
     counter++;
+#endif
+    uint16_t ring_cnt = RING_GetCount(&cdc_rx_ring);
+    printf("ring_cnt = %d\n\ridxIn = %d\n\ridxOut = %d\n\r", ring_cnt, cdc_rx_ring.idxIn, cdc_rx_ring.idxOut);
+    if(ring_cnt) {
+      RING_PopString(&cdc_rx_ring, cdc_rx);
+      printf("pop string: %s\n\r", cdc_rx);
+    }
+    HAL_Delay(2000);
   }
   /* USER CODE END 3 */
 }
@@ -245,10 +254,10 @@ HAL_GPIO_WritePin(GPIOF, LED1_Pin|LED2_Pin, GPIO_PIN_SET);
   */
 void USB_CDC_RxHandler(uint8_t* Buf, uint32_t Len)
 {
-  printf("[CDC<-] 0x%X\n\r", *Buf);
+  printf("[CDC<-] %s %d\n\r", Buf, Len);
   if (Len <= CDC_RX_SINGLE_BUFF_MAXLEN) {
-    if (*(Buf + (Len-1)) == '\0') {   // FIXME: need to properly catch zero-terminated string and put it into ring buffer
-      memcpy(cdc_rx, Buf, Len); 
+    if (strlen(Buf) == Len) {   // FIXME: need to properly catch zero-terminated string and put it into ring buffer
+      RING_PutBuffr(&cdc_rx_ring, Buf, Len);
     }
   }
 }

@@ -172,8 +172,6 @@ void RING_PutBuffr(RING_buffer_t *ringbuf, uint8_t *src, uint16_t len)
     while(len--) RING_Put(ringbuf, *(src++));
 }
 
-/** @} */
-
 /** 
  * @defgroup pop Функции выгрузки данных из буфера
  * @{
@@ -235,7 +233,7 @@ void RING_PopBuffr(RING_buffer_t *ringbuf, uint8_t *destination, uint16_t len)
  */
 void RING_PopString(RING_buffer_t *ringbuf, char *string)
 {
-    while(RING_ShowSymbol(ringbuf,0) > 0) *(string++) = RING_Pop(ringbuf);
+    while(RING_ShowSymbol(ringbuf, 0) > 0) *(string++) = RING_Pop(ringbuf);
 }
 
 
