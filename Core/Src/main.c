@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "ring_buffer.h"
+#include "jsmn.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,9 +53,11 @@
 UART_HandleTypeDef huart1;
 /* USER CODE BEGIN PV */
 char cdc_tx[CDC_TX_SINGLE_BUFF_MAXLEN];
-uint8_t cdc_rx_total[CDC_RX_TOTAL_BUFF_MAXLEN];
+char cdc_rx_total[CDC_RX_TOTAL_BUFF_MAXLEN];
 char cdc_rx[CDC_RX_SINGLE_BUFF_MAXLEN];
 RING_buffer_t cdc_rx_ring;
+jsmn_parser jsonparser;
+jsmntok_t tokens[128];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -67,7 +70,49 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+static int dump(const char *js, jsmntok_t *t, size_t count, int indent) {
+  int i, j, k;
+  jsmntok_t *key;
+  if (count == 0) {
+    return 0;
+  }
+  if (t->type == JSMN_PRIMITIVE) {
+    printf("%.*s", t->end - t->start, js + t->start);
+    return 1;
+  } else if (t->type == JSMN_STRING) {
+    printf("'%.*s'", t->end - t->start, js + t->start);
+    return 1;
+  } else if (t->type == JSMN_OBJECT) {
+    printf("\n");
+    j = 0;
+    for (i = 0; i < t->size; i++) {
+      for (k = 0; k < indent; k++) {
+        printf("  ");
+      }
+      key = t + 1 + j;
+      j += dump(js, key, count - j, indent + 1);
+      if (key->size > 0) {
+        printf(": ");
+        j += dump(js, t + 1 + j, count - j, indent + 1);
+      }
+      printf("\n");
+    }
+    return j + 1;
+  } else if (t->type == JSMN_ARRAY) {
+    j = 0;
+    printf("\n");
+    for (i = 0; i < t->size; i++) {
+      for (k = 0; k < indent - 1; k++) {
+        printf("  ");
+      }
+      printf("   - ");
+      j += dump(js, t + 1 + j, count - j, indent + 1);
+      printf("\n");
+    }
+    return j + 1;
+  }
+  return 0;
+}
 /* USER CODE END 0 */
 
 /**
@@ -102,7 +147,8 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
-  RING_Init(&cdc_rx_ring, cdc_rx_total, CDC_RX_TOTAL_BUFF_MAXLEN);
+  RING_Init(&cdc_rx_ring, (uint8_t*) cdc_rx_total, CDC_RX_TOTAL_BUFF_MAXLEN);
+  jsmn_init(&jsonparser);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -129,6 +175,11 @@ int main(void)
     if(ring_cnt) {
       RING_PopString(&cdc_rx_ring, cdc_rx);
       printf("pop string: %s\n\r", cdc_rx);
+      int rc = jsmn_parse(&jsonparser, cdc_rx, strlen(cdc_rx), tokens, (sizeof(tokens)/sizeof(tokens[0])));
+      printf("[JSON] rc = %d\n\r", rc);
+      rc = dump(cdc_rx, tokens, jsonparser.toknext, 0);
+      printf("[JSON] rc = %d\n\r", rc);
+      memset(cdc_rx, 0x0, CDC_RX_SINGLE_BUFF_MAXLEN);
     }
     HAL_Delay(2000);
   }

@@ -44,6 +44,7 @@ add_subdirectory(cmake/stm32cubemx)
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
     Drivers/ring_buffer
+    Drivers/jsmn
 )
 
 # Add sources to executable
@@ -56,6 +57,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     Drivers/ring_buffer
+    Drivers/jsmn
 )
 
 # Add project symbols (macros)
