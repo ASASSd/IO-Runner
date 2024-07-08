@@ -42,11 +42,13 @@
 #define CDC_TX_SINGLE_BUFF_MAXLEN 128
 #define CDC_RX_TOTAL_BUFF_MAXLEN 1024
 #define CDC_RX_SINGLE_BUFF_MAXLEN (CDC_RX_TOTAL_BUFF_MAXLEN / 8)
+#define TOKEN_MAX_LEN 32
+#define TOKENS_MAX_NUM 128
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
-
+#define PRINT_TOKEN(i,s) printf("token %d: type: %d start: %d end: %d value string: %s\n\r", (i), tokens[(i)].type, tokens[(i)].start, tokens[(i)].end, (s))
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -57,7 +59,8 @@ char cdc_rx_total[CDC_RX_TOTAL_BUFF_MAXLEN];
 char cdc_rx[CDC_RX_SINGLE_BUFF_MAXLEN];
 RING_buffer_t cdc_rx_ring;
 jsmn_parser jsonparser;
-jsmntok_t tokens[128];
+jsmntok_t tokens[TOKENS_MAX_NUM];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -110,6 +113,44 @@ static int dump(const char *js, jsmntok_t *t, size_t count, int indent) {
       printf("\n");
     }
     return j + 1;
+  }
+  return 0;
+}
+
+void token_load(char* str, int n) {
+  memcpy(str, (char*)(cdc_rx+tokens[n].start), (tokens[n].end-tokens[n].start));
+}
+
+int value_cmpnload(int* val, int n, char* token, const char* key) {
+  if(!strcmp(token, key)) {
+    printf("token found by key: %s\n\r", key);
+    if(tokens[n+1].type == JSMN_PRIMITIVE) {
+      printf("token primitive found\n\r");
+      char nt[TOKEN_MAX_LEN];
+      token_load(nt, n+1);
+      *val = atoi(nt);
+    } else {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+int gpio_message_load(gpio_message_t* gpio_msg, int token_cnt_max) {
+  for(int i = 0; i < token_cnt_max; i++) {
+    char singletoken[TOKEN_MAX_LEN];
+    token_load(singletoken, i);
+    PRINT_TOKEN(i, singletoken);
+    if(value_cmpnload((int*) &(gpio_msg->port), i, singletoken, gpioport_key)) {
+      return -1;
+    }
+    if(value_cmpnload((int*) &(gpio_msg->pin), i, singletoken, gpiopin_key)) {
+      return -2;
+    }
+    if(value_cmpnload((int*) &(gpio_msg->val), i, singletoken, gpioval_key)) {
+      return -3;
+    }
+    memset(singletoken, 0x0, 32);
   }
   return 0;
 }
@@ -169,16 +210,54 @@ int main(void)
     }
     HAL_Delay(counter * 5);
     counter++;
+
+    for(int i = 0; i < 10; i++) {
+        char singletoken[32];
+        memcpy(singletoken, (char*)(cdc_rx+tokens[i].start), (tokens[i].end-tokens[i].start));
+        if(tokens[i].type == JSMN_PRIMITIVE) {
+          int val = atoi(singletoken);
+          printf("token %d: type: %d start: %d end: %d value: %d\n\r", i, tokens[i].type, tokens[i].start, tokens[i].end, val);
+        } else {
+          printf("token %d: type: %d start: %d end: %d value string: %s\n\r", i, tokens[i].type, tokens[i].start, tokens[i].end, singletoken);
+        }
+        memset(singletoken, 0x0, 32);
+      }
+
+    GPIOF: ((0x40000000UL + 0x00020000UL) + 0x1400UL))
+
 #endif
     uint16_t ring_cnt = RING_GetCount(&cdc_rx_ring);
     printf("ring_cnt = %d\n\ridxIn = %d\n\ridxOut = %d\n\r", ring_cnt, cdc_rx_ring.idxIn, cdc_rx_ring.idxOut);
     if(ring_cnt) {
+      char cts[TOKEN_MAX_LEN] = {0, };   // current token string
       RING_PopString(&cdc_rx_ring, cdc_rx);
-      printf("pop string: %s\n\r", cdc_rx);
+      printf("pop string: \n\r%s\n\r", cdc_rx);
       int rc = jsmn_parse(&jsonparser, cdc_rx, strlen(cdc_rx), tokens, (sizeof(tokens)/sizeof(tokens[0])));
-      printf("[JSON] rc = %d\n\r", rc);
-      rc = dump(cdc_rx, tokens, jsonparser.toknext, 0);
-      printf("[JSON] rc = %d\n\r", rc);
+      if(rc > 0) {
+        printf("json found\n\r");
+        int if_type = -1;
+        if(tokens[1].type == JSMN_STRING) {
+          printf("if cmd found\n\r");
+          token_load(cts, 1);
+          value_cmpnload(&if_type, 1, cts, ifcmd);
+        }
+        switch(if_type) {
+          case 0:
+          printf("GPIO cmd found\n\r");
+          static gpio_message_t gpio_msg;
+          rc = gpio_message_load(&gpio_msg, TOKENS_MAX_NUM);
+          printf("rc = %d\n\r", rc);
+          printf("GPIO port = %d\n\r", gpio_msg.port);
+          printf("GPIO pin = %d\n\r", gpio_msg.pin);
+          printf("GPIO val = %d\n\r", gpio_msg.val);
+          HAL_GPIO_WritePin(gpio_msg.port, gpio_msg.pin, gpio_msg.val);
+          break;
+
+          default:
+          printf("no compatible if found!\n\r");
+          break;
+        }
+      }
       memset(cdc_rx, 0x0, CDC_RX_SINGLE_BUFF_MAXLEN);
     }
     HAL_Delay(2000);

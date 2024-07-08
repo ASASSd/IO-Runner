@@ -31,17 +31,25 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdint.h>
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+typedef struct gpio_message_s {
+  GPIO_TypeDef* port;
+  uint16_t pin;
+  GPIO_PinState val;
+} gpio_message_t;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+static const char* ifcmd = "if";
 
+static const char* gpioport_key = "port";
+static const char* gpiopin_key = "pin";
+static const char* gpioval_key = "val";
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
