@@ -234,7 +234,7 @@ int main(void)
       }
       memset(cdc_rx, 0x0, CDC_RX_SINGLE_BUFF_MAXLEN);
     }
-    HAL_Delay(2000);
+    HAL_Delay(500);
   }
   /* USER CODE END 3 */
 }
