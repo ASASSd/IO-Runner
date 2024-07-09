@@ -117,7 +117,8 @@ static int dump(const char *js, jsmntok_t *t, size_t count, int indent) {
   return 0;
 }
 
-void token_load(char* str, int n) {
+void token_load(char* str, int n, int str_size) {
+  memset(str, 0x0, str_size);
   memcpy(str, (char*)(cdc_rx+tokens[n].start), (tokens[n].end-tokens[n].start));
 }
 
@@ -139,7 +140,7 @@ int value_cmpnload(int* val, int n, char* token, const char* key) {
 int gpio_message_load(gpio_message_t* gpio_msg, int token_cnt_max) {
   for(int i = 0; i < token_cnt_max; i++) {
     char singletoken[TOKEN_MAX_LEN];
-    token_load(singletoken, i);
+    token_load(singletoken, i, TOKEN_MAX_LEN);
     PRINT_TOKEN(i, singletoken);
     if(value_cmpnload((int*) &(gpio_msg->port), i, singletoken, gpioport_key)) {
       return -1;
@@ -150,7 +151,6 @@ int gpio_message_load(gpio_message_t* gpio_msg, int token_cnt_max) {
     if(value_cmpnload((int*) &(gpio_msg->val), i, singletoken, gpioval_key)) {
       return -3;
     }
-    memset(singletoken, 0x0, 32);
   }
   return 0;
 }
