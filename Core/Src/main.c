@@ -202,33 +202,6 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  #if 0
-    static uint16_t counter = 100;
-    HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-    sprintf(cdc_tx, "counter = %d\n\r", counter);
-    CDC_Transmit_FS(cdc_tx, CDC_TX_SINGLE_BUFF_MAXLEN);
-    printf("[CDC->] %s", cdc_tx);
-    if (counter > 1000){
-      counter = 100;
-    }
-    HAL_Delay(counter * 5);
-    counter++;
-
-    for(int i = 0; i < 10; i++) {
-        char singletoken[32];
-        memcpy(singletoken, (char*)(cdc_rx+tokens[i].start), (tokens[i].end-tokens[i].start));
-        if(tokens[i].type == JSMN_PRIMITIVE) {
-          int val = atoi(singletoken);
-          printf("token %d: type: %d start: %d end: %d value: %d\n\r", i, tokens[i].type, tokens[i].start, tokens[i].end, val);
-        } else {
-          printf("token %d: type: %d start: %d end: %d value string: %s\n\r", i, tokens[i].type, tokens[i].start, tokens[i].end, singletoken);
-        }
-        memset(singletoken, 0x0, 32);
-      }
-
-    GPIOF: ((0x40000000UL + 0x00020000UL) + 0x1400UL))
-
-#endif
     uint16_t ring_cnt = RING_GetCount(&cdc_rx_ring);
     if(ring_cnt) {
       char cts[TOKEN_MAX_LEN] = {0, };   // current token string
