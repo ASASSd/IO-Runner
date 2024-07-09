@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
 #include "ring_buffer.h"
 #include "jsmn.h"
 /* USER CODE END Includes */
@@ -48,7 +49,11 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#ifdef TOKEN_DEBUG
 #define PRINT_TOKEN(i,s) printf("token %d: type: %d start: %d end: %d value string: %s\n\r", (i), tokens[(i)].type, tokens[(i)].start, tokens[(i)].end, (s))
+#else
+#define PRINT_TOKEN(i,s) while(0)
+#endif
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -124,11 +129,9 @@ void token_load(char* str, int n, int str_size) {
 
 int value_cmpnload(int* val, int n, char* token, const char* key) {
   if(!strcmp(token, key)) {
-    printf("token found by key: %s\n\r", key);
     if(tokens[n+1].type == JSMN_PRIMITIVE) {
-      printf("token primitive found\n\r");
       char nt[TOKEN_MAX_LEN];
-      token_load(nt, n+1);
+      token_load(nt, n+1, TOKEN_MAX_LEN);
       *val = atoi(nt);
     } else {
       return -1;
@@ -138,7 +141,7 @@ int value_cmpnload(int* val, int n, char* token, const char* key) {
 }
 
 int gpio_message_load(gpio_message_t* gpio_msg, int token_cnt_max) {
-  for(int i = 0; i < token_cnt_max; i++) {
+  for(int i = 3; i < token_cnt_max; i++) {
     char singletoken[TOKEN_MAX_LEN];
     token_load(singletoken, i, TOKEN_MAX_LEN);
     PRINT_TOKEN(i, singletoken);
@@ -227,26 +230,24 @@ int main(void)
 
 #endif
     uint16_t ring_cnt = RING_GetCount(&cdc_rx_ring);
-    printf("ring_cnt = %d\n\ridxIn = %d\n\ridxOut = %d\n\r", ring_cnt, cdc_rx_ring.idxIn, cdc_rx_ring.idxOut);
     if(ring_cnt) {
       char cts[TOKEN_MAX_LEN] = {0, };   // current token string
       RING_PopString(&cdc_rx_ring, cdc_rx);
-      printf("pop string: \n\r%s\n\r", cdc_rx);
       int rc = jsmn_parse(&jsonparser, cdc_rx, strlen(cdc_rx), tokens, (sizeof(tokens)/sizeof(tokens[0])));
       if(rc > 0) {
         printf("json found\n\r");
         int if_type = -1;
         if(tokens[1].type == JSMN_STRING) {
           printf("if cmd found\n\r");
-          token_load(cts, 1);
+          token_load(cts, 1, TOKEN_MAX_LEN);
           value_cmpnload(&if_type, 1, cts, ifcmd);
         }
         switch(if_type) {
           case 0:
           printf("GPIO cmd found\n\r");
-          static gpio_message_t gpio_msg;
+          gpio_message_t gpio_msg;
           rc = gpio_message_load(&gpio_msg, TOKENS_MAX_NUM);
-          printf("rc = %d\n\r", rc);
+          printf("gpio_message_load: rc = %d\n\r", rc);
           printf("GPIO port = %d\n\r", gpio_msg.port);
           printf("GPIO pin = %d\n\r", gpio_msg.pin);
           printf("GPIO val = %d\n\r", gpio_msg.val);
@@ -384,7 +385,9 @@ HAL_GPIO_WritePin(GPIOF, LED1_Pin|LED2_Pin, GPIO_PIN_SET);
   */
 void USB_CDC_RxHandler(uint8_t* Buf, uint32_t Len)
 {
+#ifdef CDC_DEBUG
   printf("[CDC<-] %s %d\n\r", Buf, Len);
+#endif
   if (Len <= CDC_RX_SINGLE_BUFF_MAXLEN) {
     if (strlen(Buf) == Len) {   // FIXME: need to properly catch zero-terminated string and put it into ring buffer
       RING_PutBuffr(&cdc_rx_ring, Buf, Len);
