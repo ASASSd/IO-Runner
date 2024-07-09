@@ -78,50 +78,6 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static int dump(const char *js, jsmntok_t *t, size_t count, int indent) {
-  int i, j, k;
-  jsmntok_t *key;
-  if (count == 0) {
-    return 0;
-  }
-  if (t->type == JSMN_PRIMITIVE) {
-    printf("%.*s", t->end - t->start, js + t->start);
-    return 1;
-  } else if (t->type == JSMN_STRING) {
-    printf("'%.*s'", t->end - t->start, js + t->start);
-    return 1;
-  } else if (t->type == JSMN_OBJECT) {
-    printf("\n");
-    j = 0;
-    for (i = 0; i < t->size; i++) {
-      for (k = 0; k < indent; k++) {
-        printf("  ");
-      }
-      key = t + 1 + j;
-      j += dump(js, key, count - j, indent + 1);
-      if (key->size > 0) {
-        printf(": ");
-        j += dump(js, t + 1 + j, count - j, indent + 1);
-      }
-      printf("\n");
-    }
-    return j + 1;
-  } else if (t->type == JSMN_ARRAY) {
-    j = 0;
-    printf("\n");
-    for (i = 0; i < t->size; i++) {
-      for (k = 0; k < indent - 1; k++) {
-        printf("  ");
-      }
-      printf("   - ");
-      j += dump(js, t + 1 + j, count - j, indent + 1);
-      printf("\n");
-    }
-    return j + 1;
-  }
-  return 0;
-}
-
 void token_load(char* str, int n, int str_size) {
   memset(str, 0x0, str_size);
   memcpy(str, (char*)(cdc_rx+tokens[n].start), (tokens[n].end-tokens[n].start));
@@ -156,6 +112,10 @@ int gpio_message_load(gpio_message_t* gpio_msg, int token_cnt_max) {
     }
   }
   return 0;
+}
+
+void gen_ret_json(ret_result_t result, char* jsonstr) {
+  sprintf(jsonstr, "{ \"result\" : %d }", result);
 }
 /* USER CODE END 0 */
 
@@ -225,6 +185,13 @@ int main(void)
           printf("GPIO pin = %d\n\r", gpio_msg.pin);
           printf("GPIO val = %d\n\r", gpio_msg.val);
           HAL_GPIO_WritePin(gpio_msg.port, gpio_msg.pin, gpio_msg.val);
+          // re-using cts string for memory saving
+          if (HAL_GPIO_ReadPin(gpio_msg.port, gpio_msg.pin) == gpio_msg.val) {
+            gen_ret_json(RET_OK, cts);
+          } else {
+            gen_ret_json(RET_ERR, cts);
+          }
+          CDC_Transmit_FS(cts, TOKEN_MAX_LEN);  // not bc of token but bc it is actually cts's length
           break;
 
           default:

@@ -32,6 +32,7 @@
   */
 #include "ring_buffer.h"
 #include "stdint.h"
+#include <string.h>
 
 /** 
  * @defgroup CRC Функции вычисления циклической контрольной суммы
@@ -127,6 +128,7 @@ void RING_Clear(RING_buffer_t* buf)
 {
     buf->idxIn = 0;
     buf->idxOut = 0;
+    memset(buf->buffer, 0x0, buf->size);
 }
 
 

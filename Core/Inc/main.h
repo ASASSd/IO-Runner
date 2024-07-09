@@ -41,6 +41,11 @@ typedef struct gpio_message_s {
   uint16_t pin;
   GPIO_PinState val;
 } gpio_message_t;
+
+typedef enum ret_result_e {
+  RET_OK,
+  RET_ERR
+} ret_result_t;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
