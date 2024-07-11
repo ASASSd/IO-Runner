@@ -115,7 +115,7 @@ int gpio_message_load(gpio_message_t* gpio_msg, int token_cnt_max) {
 }
 
 void gen_ret_json(ret_result_t result, char* jsonstr) {
-  sprintf(jsonstr, "{ \"result\" : %d }", result);
+  sprintf(jsonstr, "{ \"result\" : %d }\n\r", result);
 }
 /* USER CODE END 0 */
 
@@ -191,13 +191,14 @@ int main(void)
           } else {
             gen_ret_json(RET_ERR, cts);
           }
-          CDC_Transmit_FS(cts, TOKEN_MAX_LEN);  // not bc of token but bc it is actually cts's length
           break;
 
           default:
           printf("no compatible if found!\n\r");
+          gen_ret_json(RET_ERR, cts);
           break;
         }
+        CDC_Transmit_FS(cts, TOKEN_MAX_LEN);
       }
       memset(cdc_rx, 0x0, CDC_RX_SINGLE_BUFF_MAXLEN);
     }
